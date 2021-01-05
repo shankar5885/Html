@@ -5,15 +5,60 @@
 
 trigger:
 - main
+stages:
+- stage: Build
+  jobs:
+  - job: Build
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps: 
+    - task: NodeTool@0
+      displayName: 'Use Node version'
+      inputs:
+        versionSpec: 10.14
 
-pool:
-  vmImage: 'ubuntu-latest'
+    - task: Npm@0
+      displayName: 'npm install'
+      inputs:
+        arguments: '--force'
 
-steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
+    - task: ArchiveFiles@1
+      displayName: 'Archive files '
+      inputs:
+        rootFolder: '$(System.DefaultWorkingDirectory)'
+        includeRootFolder: false
 
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
+    - task: CopyFiles@2
+      displayName: 'Copy File to: $(TargetFolder)'
+      inputs:
+        SourceFolder: '$(Build.ArtifactStagingDirectory)'
+        Contents: '$(Build.BuildId).zip'
+        TargetFolder: '$(Build.ArtifactStagingDirectory)'
+
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Artifact'
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+        ArtifactName: 'drop'
+        publishLocation: 'Container'
+- stage: deploy
+  jobs:
+  - job: deploy
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps: 
+    - task: DownloadBuildArtifacts@0
+      inputs:
+        buildType: 'current'
+        downloadType: 'single'
+        artifactName: 'drop'
+        downloadPath: '$(System.ArtifactsDirectory)'
+    - task: AzureRmWebAppDeployment@4
+      inputs:
+        ConnectionType: 'AzureRM'
+        azureSubscription: 'SMT-SUB001 (aa748e82-e0df-42e3-ac20-f30b6a5077e0)'
+        appType: 'webAppLinux'
+        WebAppName: 'testappweb3784e'
+        packageForLinux: '$(System.ArtifactsDirectory)/drop/*.zip'
+        RuntimeStack: 'NODE|10.14'
+        StartupCommand: 'npm start'
