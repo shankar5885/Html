@@ -47,6 +47,15 @@ stages:
     pool:
       vmImage: 'ubuntu-latest'
     steps: 
+    - task: NodeTool@0
+      displayName: 'Use Node version'
+      inputs:
+        versionSpec: 10.14
+
+    - task: Npm@0
+      displayName: 'npm install'
+      inputs:
+        arguments: '--force'
     - task: DownloadBuildArtifacts@0
       inputs:
         buildType: 'current'
